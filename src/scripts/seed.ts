@@ -7,7 +7,8 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import { Crop, Vehicle, Mandi, MarketPrice } from "../models";
 
-const MONGODB_URI = process.env.MONGODB_URI ?? "mongodb://localhost:27017/krishi_route";
+const MONGODB_URI =
+  process.env.MONGODB_URI ?? "mongodb://localhost:27017/krishi_route";
 
 // ── Seed data ─────────────────────────────────────────────────
 
@@ -31,17 +32,16 @@ const VEHICLES_DATA = [
 ];
 
 const MANDIS_DATA = [
-  { mandiCode:"UK_HDW_001", name:"Haridwar APMC",        nameHindi:"हरिद्वार APMC",       state:"Uttarakhand", district:"Haridwar",      coordinates:[78.1700, 29.9500], peakDays:["Tuesday","Friday"]      },
-  { mandiCode:"UK_RKE_001", name:"Roorkee Mandi",         nameHindi:"रुड़की मंडी",          state:"Uttarakhand", district:"Haridwar",      coordinates:[77.8880, 29.8543], peakDays:["Wednesday","Saturday"]  },
-  { mandiCode:"UP_SRN_001", name:"Saharanpur APMC",        nameHindi:"सहारनपुर APMC",       state:"Uttar Pradesh",district:"Saharanpur",   coordinates:[77.5456, 29.9680], peakDays:["Monday","Thursday"]     },
-  { mandiCode:"UP_MZN_001", name:"Muzaffarnagar Mandi",    nameHindi:"मुजफ्फरनगर मंडी",    state:"Uttar Pradesh",district:"Muzaffarnagar",coordinates:[77.7085, 29.4727], peakDays:["Thursday","Sunday"]     },
-  { mandiCode:"UK_DDN_001", name:"Dehradun APMC",          nameHindi:"देहरादून APMC",       state:"Uttarakhand", district:"Dehradun",      coordinates:[78.0322, 30.3165], peakDays:["Monday","Friday"]       },
-  { mandiCode:"UP_MRT_001", name:"Meerut Mandi",           nameHindi:"मेरठ मंडी",           state:"Uttar Pradesh",district:"Meerut",       coordinates:[77.7064, 28.9845], peakDays:["Monday","Thursday"]     },
-  { mandiCode:"UP_GZB_001", name:"Ghaziabad Mandi",        nameHindi:"गाजियाबाद मंडी",     state:"Uttar Pradesh",district:"Ghaziabad",    coordinates:[77.4538, 28.6692], peakDays:["Wednesday","Saturday"]  },
-  { mandiCode:"UP_DBO_001", name:"Deoband Mandi",           nameHindi:"देवबंद मंडी",        state:"Uttar Pradesh",district:"Saharanpur",   coordinates:[77.6856, 29.6965], peakDays:["Monday","Thursday"]     },
+  { mandiCode:"UK_HDW_001", name:"Haridwar APMC",        nameHindi:"हरिद्वार APMC",       state:"Uttarakhand", district:"Haridwar",      coordinates:[78.1700, 29.9500], peakDays:["Tuesday","Friday"] },
+  { mandiCode:"UK_RKE_001", name:"Roorkee Mandi",         nameHindi:"रुड़की मंडी",          state:"Uttarakhand", district:"Haridwar",      coordinates:[77.8880, 29.8543], peakDays:["Wednesday","Saturday"] },
+  { mandiCode:"UP_SRN_001", name:"Saharanpur APMC",        nameHindi:"सहारनपुर APMC",       state:"Uttar Pradesh",district:"Saharanpur",   coordinates:[77.5456, 29.9680], peakDays:["Monday","Thursday"] },
+  { mandiCode:"UP_MZN_001", name:"Muzaffarnagar Mandi",    nameHindi:"मुजफ्फरनगर मंडी",    state:"Uttar Pradesh",district:"Muzaffarnagar",coordinates:[77.7085, 29.4727], peakDays:["Thursday","Sunday"] },
+  { mandiCode:"UK_DDN_001", name:"Dehradun APMC",          nameHindi:"देहरादून APMC",       state:"Uttarakhand", district:"Dehradun",      coordinates:[78.0322, 30.3165], peakDays:["Monday","Friday"] },
+  { mandiCode:"UP_MRT_001", name:"Meerut Mandi",           nameHindi:"मेरठ मंडी",           state:"Uttar Pradesh",district:"Meerut",       coordinates:[77.7064, 28.9845], peakDays:["Monday","Thursday"] },
+  { mandiCode:"UP_GZB_001", name:"Ghaziabad Mandi",        nameHindi:"गाजियाबाद मंडी",     state:"Uttar Pradesh",district:"Ghaziabad",    coordinates:[77.4538, 28.6692], peakDays:["Wednesday","Saturday"] },
+  { mandiCode:"UP_DBO_001", name:"Deoband Mandi",           nameHindi:"देवबंद मंडी",        state:"Uttar Pradesh",district:"Saharanpur",   coordinates:[77.6856, 29.6965], peakDays:["Monday","Thursday"] },
 ];
 
-// Base prices per crop (₹/quintal) — used for generating mock history
 const BASE_PRICES: Record<string, number> = {
   onion:1800, tomato:2200, wheat:2100, potato:1200,
   garlic:6000, rice:2800, mustard:5400, maize:1700,
@@ -51,9 +51,20 @@ function randomBetween(min: number, max: number): number {
   return Math.round(min + Math.random() * (max - min));
 }
 
-async function seed(): Promise<void> {
+// ── ✅ EXPORTED FUNCTION ──────────────────────────────────────
+export async function seedDatabase(force: boolean = false): Promise<void> {
   await mongoose.connect(MONGODB_URI);
   console.log("🔗 Connected to MongoDB");
+
+  // Skip if data exists (unless forced)
+  if (!force) {
+    const count = await Crop.countDocuments();
+    if (count > 0) {
+      console.log("⚡ Data already exists, skipping seed");
+      await mongoose.disconnect();
+      return;
+    }
+  }
 
   // Clear existing
   await Promise.all([
@@ -62,7 +73,7 @@ async function seed(): Promise<void> {
     Mandi.deleteMany({}),
     MarketPrice.deleteMany({}),
   ]);
-  console.log("🗑️  Cleared existing data");
+  console.log("🗑️ Cleared existing data");
 
   // Insert crops
   const crops = await Crop.insertMany(CROPS_DATA);
@@ -76,43 +87,41 @@ async function seed(): Promise<void> {
   const mandisToInsert = MANDIS_DATA.map(m => ({
     ...m,
     location: { type: "Point" as const, coordinates: m.coordinates },
-    isActive: true, apmc: true,
+    isActive: true,
+    apmc: true,
     operatingHours: { open:"06:00", close:"18:00" },
   }));
+
   const mandis = await Mandi.insertMany(mandisToInsert);
   console.log(`✅ Inserted ${mandis.length} mandis`);
 
-  // Generate 30 days of price history for each mandi × crop
+  // Generate price history
   const priceRecords = [];
   const today = new Date();
   today.setHours(0,0,0,0);
 
   for (const mandi of mandis) {
     for (const crop of crops) {
-      const base    = BASE_PRICES[crop.value] ?? 1500;
+      const base = BASE_PRICES[crop.value] ?? 1500;
       let prevModal = base;
 
       for (let d = 29; d >= 0; d--) {
         const date = new Date(today);
         date.setDate(date.getDate() - d);
 
-        // Simulate natural price movement
-        const swing    = randomBetween(-1, 1) * base * 0.04;
-        const modal    = Math.max(100, Math.round(prevModal + swing));
-        const minPrice = Math.round(modal * randomBetween(88, 95) / 100);
-        const maxPrice = Math.round(modal * randomBetween(105, 115) / 100);
-        const arrivals = randomBetween(10, 200);
+        const swing = randomBetween(-1, 1) * base * 0.04;
+        const modal = Math.max(100, Math.round(prevModal + swing));
 
         priceRecords.push({
-          mandi:      mandi._id,
-          crop:       crop._id,
+          mandi: mandi._id,
+          crop: crop._id,
           date,
-          minPrice,
-          maxPrice,
+          minPrice: Math.round(modal * randomBetween(88, 95) / 100),
+          maxPrice: Math.round(modal * randomBetween(105, 115) / 100),
           modalPrice: modal,
-          arrivals,
-          trend:      "stable",   // will be recomputed by API
-          source:     "estimated",
+          arrivals: randomBetween(10, 200),
+          trend: "stable",
+          source: "estimated",
         });
 
         prevModal = modal;
@@ -121,13 +130,8 @@ async function seed(): Promise<void> {
   }
 
   await MarketPrice.insertMany(priceRecords);
-  console.log(`✅ Inserted ${priceRecords.length} price records (${mandis.length} mandis × ${crops.length} crops × 30 days)`);
+  console.log(`✅ Inserted ${priceRecords.length} price records`);
 
-  console.log("\n🌾 Seed complete!");
+  console.log("🌾 Seed complete!");
   await mongoose.disconnect();
 }
-
-seed().catch(err => {
-  console.error("Seed failed:", err);
-  process.exit(1);
-});
