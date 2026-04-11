@@ -24,6 +24,7 @@ const ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "https://annam-ai-hackathon.vercel.app",
   "https://annam-ai-hackathon-server4.onrender.com",
+  "https://annam-ai-hackathon-dlcvoph4n-aditya-kumars-projects-a84cc173.vercel.app/"
 ];
 
 // Also allow CLIENT_URL from .env (strip trailing slash)
